@@ -64,3 +64,33 @@ crane-waitlist
 └─ tsconfig.json
 
 ```
+```
+crane-waitlist
+├─ AGENTS.md
+├─ app
+│  ├─ api
+│  │  └─ waitlist
+│  │     └─ route.ts
+│  ├─ favicon.ico
+│  ├─ globals.css
+│  ├─ layout.tsx
+│  └─ page.tsx
+├─ CLAUDE.md
+├─ eslint.config.mjs
+├─ lib
+│  └─ supabase.ts
+├─ next.config.ts
+├─ package-lock.json
+├─ package.json
+├─ postcss.config.mjs
+├─ public
+│  ├─ file.svg
+│  ├─ globe.svg
+│  ├─ logo.png
+│  ├─ next.svg
+│  ├─ vercel.svg
+│  └─ window.svg
+├─ README.md
+└─ tsconfig.json
+
+```
