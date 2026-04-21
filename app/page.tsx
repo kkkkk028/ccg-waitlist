@@ -581,7 +581,7 @@ type ToastItem = { id: number; variant: ToastVariant; title: string; body?: stri
 const INITIAL_FORM: FormState = { firstName: "", lastName: "", email: "" };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_RE  = /^[A-Za-zÀ-ÿ'\- ]{2,40}$/;
-const TOAST_TTL = 6000;
+const TOAST_TTL = 7000;
 
 function validateField(key: FieldKey, value: string): string | undefined {
   const v = value.trim();
@@ -614,11 +614,14 @@ export default function WaitlistPage() {
   const [ready,   setReady]   = useState(false);
   const counter = useRef(0);
 
-  useEffect(() => { const r = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(r); }, []);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
 
   useEffect(() => {
     if (status === "success" || status === "duplicate") {
-      const t = setTimeout(() => setStatus("idle"), 4000);
+      const t = setTimeout(() => setStatus("idle"), 5000);
       return () => clearTimeout(t);
     }
   }, [status]);
@@ -629,7 +632,9 @@ export default function WaitlistPage() {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), TOAST_TTL);
   }, []);
 
-  const removeToast = useCallback((id: number) => setToasts(p => p.filter(t => t.id !== id)), []);
+  const removeToast = useCallback((id: number) => {
+    setToasts(p => p.filter(t => t.id !== id));
+  }, []);
 
   const handleChange = useCallback((key: FieldKey) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -668,7 +673,7 @@ export default function WaitlistPage() {
       const data = await res.json().catch(() => ({}));
       if (res.status === 409) {
         setStatus("duplicate");
-        addToast("info", "Already registered", "That email is already on the waitlist. We will be in touch.");
+        addToast("info", "Already registered", "That email is already on the waitlist. We will be in touch soon.");
         resetForm(); return;
       }
       if (!res.ok) {
@@ -677,7 +682,7 @@ export default function WaitlistPage() {
         return;
       }
       setStatus("success");
-      addToast("success", "Request received", "You are on the list. Check your inbox for a confirmation.");
+      addToast("success", "Request received", "You are on the list. Check your inbox for a confirmation email.");
       resetForm();
     } catch {
       setStatus("error");
@@ -690,342 +695,354 @@ export default function WaitlistPage() {
 
   return (
     <>
+      {/* ── Global styles ─────────────────────────────────────────────────── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          /* Background */
           --bg:            #04070f;
-          --bg-2:          #060a15;
+          --surface:       rgba(255,255,255,0.032);
+          --surface-2:     rgba(255,255,255,0.054);
+          --border:        rgba(255,255,255,0.08);
+          --border-2:      rgba(255,255,255,0.15);
 
-          /* Surfaces */
-          --surface:       rgba(255,255,255,0.026);
-          --surface-hover: rgba(255,255,255,0.044);
-          --border:        rgba(255,255,255,0.07);
-          --border-2:      rgba(255,255,255,0.13);
+          --t1: #edf2ff;
+          --t2: rgba(210,222,248,0.58);
+          --t3: rgba(190,208,242,0.35);
+          --t4: rgba(190,208,242,0.55);
 
-          /* Text */
-          --t1: #edf1ff;
-          --t2: rgba(210,220,245,0.52);
-          --t3: rgba(190,205,240,0.28);
+          --blue:      #5aaeff;
+          --blue-2:    #7ec8ff;
+          --blue-dim:  rgba(90,174,255,0.15);
+          --blue-glow: rgba(90,174,255,0.09);
 
-          /* Accent — sky blue */
-          --blue:       #5aaeff;
-          --blue-mid:   rgba(90,174,255,0.55);
-          --blue-dim:   rgba(90,174,255,0.14);
-          --blue-glow:  rgba(90,174,255,0.08);
+          --green:     #34c97b;
+          --green-dim: rgba(52,201,123,0.14);
+          --red:       #f06868;
+          --red-dim:   rgba(240,104,104,0.12);
 
-          /* States */
-          --green:      #34c97b;
-          --green-dim:  rgba(52,201,123,0.13);
-          --red:        #f06060;
-          --red-dim:    rgba(240,96,96,0.11);
+          --font:  'Sora', system-ui, sans-serif;
+          --mono:  'DM Mono', monospace;
 
-          /* Grid */
-          --grid-fine:   rgba(80,140,255,0.55);
-          --grid-coarse: rgba(80,140,255,0.85);
-
-          /* Misc */
-          --r-sm: 8px;
-          --r-md: 12px;
-          --r-lg: 16px;
-          --r-xl: 20px;
-
-          --font: 'DM Sans', system-ui, sans-serif;
-          --mono: 'DM Mono', monospace;
+          --r-sm:  8px;
+          --r-md:  13px;
+          --r-lg:  18px;
+          --r-xl:  22px;
         }
 
-        html, body { height: 100%; }
+        html { height: 100%; }
         body {
           font-family: var(--font);
           background: var(--bg);
           color: var(--t1);
           -webkit-font-smoothing: antialiased;
-          overflow: hidden;
+          -moz-osx-font-smoothing: grayscale;
+          min-height: 100%;
+          overflow-x: hidden;
         }
 
-        /* Float label inputs */
+        /* ── Float label ── */
         .fi {
           width: 100%; height: 100%;
           background: transparent;
           border: none; outline: none;
           color: var(--t1);
           font-family: var(--font);
-          font-size: 13.5px;
-          padding: 19px 14px 7px;
+          font-size: 14px;
+          font-weight: 400;
+          padding: 20px 14px 8px;
           caret-color: var(--blue);
         }
         .fi::placeholder { color: transparent; }
-        .fi:disabled { cursor: not-allowed; }
+        .fi:disabled { cursor: not-allowed; opacity: 0.5; }
 
         .fl {
           position: absolute;
           left: 14px; top: 50%;
           transform: translateY(-50%);
-          font-size: 13.5px;
-          color: var(--t3);
+          font-family: var(--font);
+          font-size: 14px;
+          font-weight: 400;
+          /* ── FIXED: much more visible placeholder ── */
+          color: rgba(190,210,248,0.55);
           pointer-events: none;
-          transition: top .17s ease, font-size .17s ease, color .17s ease, letter-spacing .17s ease;
+          transition: top .18s ease, font-size .18s ease, color .18s ease, letter-spacing .18s ease;
           white-space: nowrap;
         }
         .fi:focus + .fl,
         .fi:not(:placeholder-shown) + .fl {
           top: 9px; transform: none;
           font-size: 10px;
-          color: var(--t2);
-          letter-spacing: .04em;
+          font-weight: 500;
+          color: var(--blue);
+          letter-spacing: .05em;
+          text-transform: uppercase;
         }
 
-        /* Keyframes */
-        @keyframes fade-in   { from{opacity:0} to{opacity:1} }
-        @keyframes rise      { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes pop       { 0%{opacity:0;transform:scale(.84)} 55%{opacity:1;transform:scale(1.05)} 100%{transform:scale(1)} }
-        @keyframes spin      { to{transform:rotate(360deg)} }
-        @keyframes ping      { 75%,100%{transform:scale(2.2);opacity:0} }
-        @keyframes scan      { 0%{transform:translateY(-2px);opacity:0} 4%{opacity:1} 93%{opacity:.5} 100%{transform:translateY(100vh);opacity:0} }
-        @keyframes shake     { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 50%{transform:translateX(4px)} 75%{transform:translateX(-3px)} }
-        @keyframes toast-in  { from{opacity:0;transform:translateY(-10px) scale(.96)} to{opacity:1;transform:none} }
-        @keyframes err-in    { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+        /* ── Keyframes ── */
+        @keyframes fade-in  { from{opacity:0} to{opacity:1} }
+        @keyframes rise     { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pop      { 0%{opacity:0;transform:scale(.82)} 55%{opacity:1;transform:scale(1.06)} 100%{transform:scale(1)} }
+        @keyframes spin     { to{transform:rotate(360deg)} }
+        @keyframes ping     { 75%,100%{transform:scale(2.4);opacity:0} }
+        @keyframes scan     { 0%{transform:translateY(-2px);opacity:0} 4%{opacity:1} 93%{opacity:.45} 100%{transform:translateY(100vh);opacity:0} }
+        @keyframes shake    { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 50%{transform:translateX(5px)} 75%{transform:translateX(-3px)} }
+        @keyframes toast-in { from{opacity:0;transform:translateY(-14px) scale(.95)} to{opacity:1;transform:none} }
+        @keyframes err-in   { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+        @keyframes slide-in { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+
+        /* ── Responsive helpers ── */
+        @media (max-width: 600px) {
+          .name-grid { grid-template-columns: 1fr !important; }
+          .nav-tagline { display: none !important; }
+          .footer-right { display: none !important; }
+          .hero-headline { font-size: clamp(2rem, 9vw, 2.8rem) !important; white-space: normal !important; }
+          .hero-sub { font-size: 13px !important; }
+          .card-pad { padding: 20px 16px 18px !important; }
+          .page-pad { padding-left: 18px !important; padding-right: 18px !important; }
+          .nav-status-text { display: none !important; }
+        }
+        @media (max-width: 400px) {
+          .trust-line { flex-wrap: wrap; gap: 8px !important; justify-content: center; }
+        }
       `}</style>
 
-      {/* ── Outer shell ── */}
+      {/* ── Outer shell ─────────────────────────────────────────────────── */}
       <div style={{
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        height: "100svh",
-        overflow: "hidden",
+        minHeight: "100svh",
         opacity: ready ? 1 : 0,
-        animation: ready ? "fade-in .45s ease both" : "none",
+        animation: ready ? "fade-in .4s ease both" : "none",
       }}>
 
-        {/* ════════════════════════════════════════════════════════
+        {/* ══════════════════════════════════════════════════════
             BACKGROUND
-        ════════════════════════════════════════════════════════ */}
+        ══════════════════════════════════════════════════════ */}
         <div aria-hidden style={{
-          position: "absolute", inset: 0, zIndex: 0,
+          position: "fixed", inset: 0, zIndex: 0,
           pointerEvents: "none", overflow: "hidden",
         }}>
-          {/* Base */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(180deg, #060b18 0%, #04070f 50%, #030609 100%)",
+            background: "linear-gradient(180deg,#060c1a 0%,#04070f 52%,#030508 100%)",
           }} />
-
           {/* Fine grid */}
           <div style={{
-            position: "absolute", inset: 0, opacity: .055,
-            backgroundImage: `linear-gradient(var(--grid-fine) 1px,transparent 1px),linear-gradient(90deg,var(--grid-fine) 1px,transparent 1px)`,
+            position: "absolute", inset: 0, opacity: .052,
+            backgroundImage: `linear-gradient(rgba(80,140,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(80,140,255,.6) 1px,transparent 1px)`,
             backgroundSize: "28px 28px",
           }} />
           {/* Coarse grid */}
           <div style={{
-            position: "absolute", inset: 0, opacity: .04,
-            backgroundImage: `linear-gradient(var(--grid-coarse) 1px,transparent 1px),linear-gradient(90deg,var(--grid-coarse) 1px,transparent 1px)`,
+            position: "absolute", inset: 0, opacity: .038,
+            backgroundImage: `linear-gradient(rgba(80,140,255,.9) 1px,transparent 1px),linear-gradient(90deg,rgba(80,140,255,.9) 1px,transparent 1px)`,
             backgroundSize: "140px 140px",
           }} />
-
           {/* Blueprint SVG */}
-          <svg style={{ position:"absolute",inset:0,width:"100%",height:"100%",opacity:.06 }}
+          <svg style={{ position:"absolute",inset:0,width:"100%",height:"100%",opacity:.055 }}
             viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
-            <g fill="none" stroke="rgba(100,170,255,.9)" strokeWidth=".75">
-              <rect x="100" y="70"  width="1240" height="760" />
-              <line x1="100" y1="430" x2="720"  y2="430" />
-              <line x1="720" y1="70"  x2="720"  y2="830" />
-              <line x1="720" y1="570" x2="1340" y2="570" />
-              <line x1="1060" y1="70" x2="1060" y2="570" />
-              <rect x="180" y="130" width="460" height="220" strokeDasharray="7 5" />
-              <rect x="180" y="480" width="300" height="200" strokeDasharray="7 5" />
-              <rect x="790" y="130" width="200" height="360" strokeDasharray="7 5" />
-              <rect x="1080" y="130" width="180" height="360" strokeDasharray="7 5"/>
-              <line x1="100" y1="40"   x2="1340" y2="40"  strokeDasharray="4 6" strokeOpacity=".5" />
-              <line x1="100" y1="33"   x2="100"  y2="47" />
-              <line x1="720" y1="33"   x2="720"  y2="47" />
-              <line x1="1340" y1="33"  x2="1340" y2="47" />
-              <path d="M100 70 L124 70 M100 70 L100 94" />
-              <path d="M1340 70 L1316 70 M1340 70 L1340 94" />
-              <path d="M100 830 L124 830 M100 830 L100 806" />
-              <path d="M1340 830 L1316 830 M1340 830 L1340 806" />
-              <path d="M490 430 A70 70 0 0 1 560 500" />
-              <path d="M720 310 A70 70 0 0 0 790 380" />
-              <line x1="200" y1="510" x2="460" y2="510" strokeOpacity=".45"/>
-              <line x1="200" y1="540" x2="460" y2="540" strokeOpacity=".45"/>
-              <line x1="200" y1="570" x2="460" y2="570" strokeOpacity=".45"/>
-              <circle cx="720" cy="430" r="5" strokeOpacity=".35" />
+            <g fill="none" stroke="rgba(100,165,255,.9)" strokeWidth=".7">
+              <rect x="100" y="70" width="1240" height="760"/>
+              <line x1="100" y1="430" x2="720" y2="430"/>
+              <line x1="720" y1="70"  x2="720" y2="830"/>
+              <line x1="720" y1="570" x2="1340" y2="570"/>
+              <line x1="1060" y1="70" x2="1060" y2="570"/>
+              <rect x="180" y="130" width="460" height="220" strokeDasharray="7 5"/>
+              <rect x="180" y="480" width="300" height="200" strokeDasharray="7 5"/>
+              <rect x="790" y="130" width="200" height="360" strokeDasharray="7 5"/>
+              <line x1="100" y1="40"  x2="1340" y2="40"  strokeDasharray="4 6" strokeOpacity=".5"/>
+              <line x1="100" y1="33"  x2="100"  y2="47"/>
+              <line x1="720" y1="33"  x2="720"  y2="47"/>
+              <line x1="1340" y1="33" x2="1340" y2="47"/>
+              <path d="M100 70 L124 70 M100 70 L100 94"/>
+              <path d="M1340 70 L1316 70 M1340 70 L1340 94"/>
+              <path d="M100 830 L124 830 M100 830 L100 806"/>
+              <path d="M1340 830 L1316 830 M1340 830 L1340 806"/>
+              <path d="M490 430 A70 70 0 0 1 560 500"/>
+              <path d="M720 310 A70 70 0 0 0 790 380"/>
+              <line x1="200" y1="510" x2="460" y2="510" strokeOpacity=".4"/>
+              <line x1="200" y1="542" x2="460" y2="542" strokeOpacity=".4"/>
+              <line x1="200" y1="574" x2="460" y2="574" strokeOpacity=".4"/>
+              <circle cx="720" cy="430" r="5" strokeOpacity=".3"/>
             </g>
           </svg>
-
-          {/* Blue center glow */}
+          {/* Glows */}
           <div style={{
             position:"absolute", left:"50%", top:"44%",
             width:700, height:700,
-            transform:"translate(-50%,-50%)",
-            borderRadius:"50%",
-            background:"radial-gradient(circle,rgba(56,120,255,0.085) 0%,transparent 66%)",
+            transform:"translate(-50%,-50%)", borderRadius:"50%",
+            background:"radial-gradient(circle,rgba(50,110,255,0.09) 0%,transparent 66%)",
             filter:"blur(40px)",
-          }} />
-          {/* Top-right accent */}
+          }}/>
           <div style={{
             position:"absolute", right:"-3%", top:"-2%",
             width:520, height:520, borderRadius:"50%",
             background:"radial-gradient(circle,rgba(90,174,255,0.055) 0%,transparent 65%)",
             filter:"blur(55px)",
-          }} />
-          {/* Bottom-left accent */}
-          <div style={{
-            position:"absolute", left:"-4%", bottom:"-4%",
-            width:420, height:420, borderRadius:"50%",
-            background:"radial-gradient(circle,rgba(60,100,220,0.06) 0%,transparent 68%)",
-            filter:"blur(50px)",
-          }} />
-
+          }}/>
           {/* Vignette */}
           <div style={{
             position:"absolute", inset:0,
-            background:"radial-gradient(ellipse at center,transparent 36%,rgba(0,0,0,0.76) 100%)",
-          }} />
-
-          {/* Scan line */}
+            background:"radial-gradient(ellipse at center,transparent 34%,rgba(0,0,0,0.78) 100%)",
+          }}/>
+          {/* Scan */}
           <div style={{
             position:"absolute", left:0, right:0, top:0, height:1,
-            background:"linear-gradient(90deg,transparent,rgba(90,174,255,0.22) 30%,rgba(90,174,255,0.36) 50%,rgba(90,174,255,0.22) 70%,transparent)",
+            background:"linear-gradient(90deg,transparent,rgba(90,174,255,0.25) 30%,rgba(90,174,255,0.4) 50%,rgba(90,174,255,0.25) 70%,transparent)",
             animation:"scan 16s linear infinite",
-          }} />
+          }}/>
         </div>
 
-        {/* ════════════════════════════════════════════════════════
-            TOAST STACK
-        ════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════
+            TOAST — bigger, centred, impossible to miss
+        ══════════════════════════════════════════════════════ */}
         <div aria-live="polite" style={{
-          position:"fixed", top:20, left:"50%", transform:"translateX(-50%)",
-          zIndex:200, display:"flex", flexDirection:"column",
-          alignItems:"center", gap:8,
-          width:"calc(100% - 32px)", maxWidth:380,
+          position:"fixed", top:24, left:"50%", transform:"translateX(-50%)",
+          zIndex:300,
+          display:"flex", flexDirection:"column", alignItems:"center", gap:10,
+          width:"calc(100% - 32px)", maxWidth:480,
           pointerEvents:"none",
         }}>
           {toasts.map(t => <Toast key={t.id} item={t} onClose={() => removeToast(t.id)} />)}
         </div>
 
-        {/* ════════════════════════════════════════════════════════
-            NAVIGATION — full viewport width, items at extremes
-        ════════════════════════════════════════════════════════ */}
-        <header style={{
+        {/* ══════════════════════════════════════════════════════
+            NAV
+        ══════════════════════════════════════════════════════ */}
+        <header className="page-pad" style={{
           position:"relative", zIndex:10,
           width:"100%",
-          display:"flex",
-          alignItems:"center",
-          justifyContent:"space-between",
-          padding:"22px 40px",
-          animation:"rise .55s ease both",
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"24px 48px",
+          animation:"rise .5s ease both",
         }}>
-          {/* Left — Wordmark */}
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          {/* ── Left: Logo + Wordmark ── */}
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            {/*
+              ════════════════════════════════════════════════════
+              YOUR LOGO IMAGE — HOW TO USE YOUR OWN LOGO:
+              1. Place your logo file inside the /public folder
+                 Example: /public/logo.png  or  /public/logo.svg
+              2. Replace the <CraneLogo /> component below with:
+                 <img src="/logo.png" alt="Crane Core Group" width={44} height={44}
+                   style={{ borderRadius: 10, objectFit:"contain" }} />
+              3. Adjust width/height to match your logo's dimensions
+              ════════════════════════════════════════════════════
+            */}
             <CraneLogo />
+
             <div>
+              {/* Company name — bigger, Sora font */}
               <div style={{
-                fontSize:13, fontWeight:600,
-                letterSpacing:"-0.02em",
-                color:"rgba(237,241,255,0.9)",
-                lineHeight:1,
+                fontSize: 17,
+                fontWeight: 700,
+                letterSpacing: "-0.03em",
+                color: "rgba(240,245,255,0.95)",
+                lineHeight: 1,
+                fontFamily: "var(--font)",
               }}>
                 Crane Core Group
               </div>
-              <div style={{
-                fontFamily:"var(--mono)",
-                fontSize:9.5,
-                letterSpacing:"0.16em",
-                textTransform:"uppercase",
-                color:"var(--t3)",
-                marginTop:4, lineHeight:1,
+              <div className="nav-tagline" style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "var(--t3)",
+                marginTop: 5,
+                lineHeight: 1,
               }}>
                 Construction Intelligence
               </div>
             </div>
           </div>
 
-          {/* Right — Status pill */}
+          {/* ── Right: Status pill — bigger ── */}
           <div style={{
-            display:"flex", alignItems:"center", gap:7,
-            padding:"6px 14px",
+            display:"flex", alignItems:"center", gap:8,
+            padding:"8px 16px",
             borderRadius:40,
-            border:"1px solid var(--border)",
-            background:"var(--surface)",
-            backdropFilter:"blur(14px)",
+            border:"1px solid rgba(255,255,255,0.09)",
+            background:"rgba(255,255,255,0.03)",
+            backdropFilter:"blur(16px)",
           }}>
-            <span style={{ position:"relative", display:"flex", width:6, height:6 }}>
+            <span style={{ position:"relative", display:"flex", width:7, height:7 }}>
               <span style={{
                 position:"absolute", inset:0, borderRadius:"50%",
                 background:"var(--green)",
-                animation:"ping 2.2s ease-out infinite", opacity:.5,
-              }} />
+                animation:"ping 2.2s ease-out infinite", opacity:.55,
+              }}/>
               <span style={{
-                position:"relative", width:6, height:6, borderRadius:"50%",
+                position:"relative", width:7, height:7, borderRadius:"50%",
                 background:"var(--green)", display:"block",
-              }} />
+              }}/>
             </span>
-            <span style={{
+            <span className="nav-status-text" style={{
               fontFamily:"var(--mono)",
-              fontSize:10, letterSpacing:"0.13em",
+              fontSize:11, letterSpacing:"0.14em",
               textTransform:"uppercase", color:"var(--t3)",
+              fontWeight: 500,
             }}>
               Early access open
             </span>
           </div>
         </header>
 
-        {/* ════════════════════════════════════════════════════════
-            MAIN — hero + form, centred
-        ════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════
+            MAIN
+        ══════════════════════════════════════════════════════ */}
         <main style={{
           position:"relative", zIndex:10,
           flex:1,
-          display:"flex",
-          alignItems:"center",
-          justifyContent:"center",
-          padding:"0 20px",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          padding:"20px 20px 32px",
         }}>
           <div style={{
-            width:"100%", maxWidth:480,
+            width:"100%", maxWidth:520,
             display:"flex", flexDirection:"column", alignItems:"center",
           }}>
 
-            {/* Category label */}
+            {/* Category label — bigger */}
             <div style={{
-              display:"flex", alignItems:"center", gap:10, marginBottom:22,
+              display:"flex", alignItems:"center", gap:12, marginBottom:22,
               animation:"rise .55s ease .06s both",
             }}>
-              <div style={{ width:28, height:1, background:"linear-gradient(90deg,transparent,rgba(90,174,255,0.4))" }} />
+              <div style={{ width:32, height:1, background:"linear-gradient(90deg,transparent,rgba(90,174,255,0.45))" }}/>
               <span style={{
                 fontFamily:"var(--mono)",
-                fontSize:9.5, letterSpacing:"0.24em",
-                textTransform:"uppercase", color:"var(--t3)",
+                fontSize: 11,
+                letterSpacing:"0.24em",
+                textTransform:"uppercase",
+                color:"rgba(160,200,255,0.55)",
+                fontWeight: 500,
               }}>
                 AI · Blueprint Intelligence
               </span>
-              <div style={{ width:28, height:1, background:"linear-gradient(90deg,rgba(90,174,255,0.4),transparent)" }} />
+              <div style={{ width:32, height:1, background:"linear-gradient(90deg,rgba(90,174,255,0.45),transparent)" }}/>
             </div>
 
-            {/* Headline */}
-            <h1 style={{
+            {/* Headline — single line */}
+            <h1 className="hero-headline" style={{
               margin:0, textAlign:"center",
-              fontSize:"clamp(2.1rem,6.5vw,3.75rem)",
-              fontWeight:600,
-              letterSpacing:"-0.035em",
+              fontSize:"clamp(2.2rem,5.5vw,3.6rem)",
+              fontWeight:700,
+              letterSpacing:"-0.04em",
               lineHeight:1.06,
+              whiteSpace:"nowrap",
               animation:"rise .6s ease .1s both",
             }}>
               <span style={{
-                display:"block",
-                background:"linear-gradient(150deg,#edf2ff 0%,rgba(237,242,255,0.8) 55%,rgba(130,170,255,0.45) 100%)",
+                background:"linear-gradient(150deg,#edf2ff 0%,rgba(237,242,255,0.78) 55%,rgba(120,165,255,0.42) 100%)",
                 WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text",
               }}>
-                Blueprints into
+                Blueprints into{" "}
               </span>
               <span style={{
-                display:"block",
-                background:"linear-gradient(145deg,#7ec8ff 0%,#5aaeff 45%,rgba(90,174,255,0.6) 100%)",
+                background:"linear-gradient(145deg,#7ec8ff 0%,#5aaeff 50%,rgba(90,174,255,0.55) 100%)",
                 WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text",
               }}>
                 Intelligence.
@@ -1033,23 +1050,23 @@ export default function WaitlistPage() {
             </h1>
 
             {/* Sub */}
-            <p style={{
-              margin:"15px 0 0", textAlign:"center",
-              fontSize:14, lineHeight:1.72,
+            <p className="hero-sub" style={{
+              margin:"16px 0 0", textAlign:"center",
+              fontSize:14.5, lineHeight:1.72,
               color:"var(--t2)", fontWeight:300,
-              maxWidth:380,
+              maxWidth:400,
               animation:"rise .6s ease .16s both",
             }}>
               AI systems that read architectural drawings, automate resource estimation,
               and accelerate decision-making across construction and infrastructure projects.
             </p>
 
-            {/* Hairline divider */}
+            {/* Divider */}
             <div style={{
               width:"100%", margin:"26px 0", height:1,
-              background:"linear-gradient(90deg,transparent,var(--border) 30%,var(--border) 70%,transparent)",
+              background:"linear-gradient(90deg,transparent,var(--border) 25%,var(--border) 75%,transparent)",
               animation:"rise .6s ease .2s both",
-            }} />
+            }}/>
 
             {/* ── FORM ── */}
             <form noValidate onSubmit={handleSubmit} style={{
@@ -1057,74 +1074,70 @@ export default function WaitlistPage() {
               animation:"rise .6s ease .24s both",
             }}>
               {/* Glass card */}
-              <div style={{
-                background:"linear-gradient(158deg,rgba(255,255,255,0.036) 0%,rgba(255,255,255,0.010) 100%)",
-                border:"1px solid var(--border)",
+              <div className="card-pad" style={{
+                background:"linear-gradient(158deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.012) 100%)",
+                border:"1px solid rgba(255,255,255,0.09)",
                 borderRadius:"var(--r-xl)",
-                padding:"22px 22px 20px",
-                boxShadow:"0 40px 80px -20px rgba(0,0,0,0.88),inset 0 1px 0 rgba(255,255,255,0.04)",
-                backdropFilter:"blur(28px)",
+                padding:"26px 26px 22px",
+                boxShadow:"0 48px 96px -24px rgba(0,0,0,0.9),inset 0 1px 0 rgba(255,255,255,0.05)",
+                backdropFilter:"blur(32px)",
               }}>
-                {/* Card header */}
-                <div style={{
-                  display:"flex", alignItems:"center",
-                  justifyContent:"space-between", marginBottom:16,
+
+                {/* Card header — NO step counter */}
+                <p style={{
+                  fontFamily:"var(--mono)",
+                  fontSize:10, letterSpacing:"0.22em",
+                  textTransform:"uppercase", color:"var(--t3)",
+                  marginBottom:18, fontWeight:500,
                 }}>
-                  <span style={{
-                    fontFamily:"var(--mono)", fontSize:9.5,
-                    letterSpacing:"0.2em", textTransform:"uppercase", color:"var(--t3)",
-                  }}>
-                    Request early access
-                  </span>
-                  <span style={{
-                    fontFamily:"var(--mono)", fontSize:9.5,
-                    color:"var(--t3)", letterSpacing:"0.06em",
-                  }}>
-                    Step 1 / 1
-                  </span>
-                </div>
+                  Request early access
+                </p>
 
                 {/* Name row */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div className="name-grid" style={{
+                  display:"grid",
+                  gridTemplateColumns:"1fr 1fr",
+                  gap:12,
+                }}>
                   <Field id="firstName" label="First name"
                     value={form.firstName} onChange={handleChange("firstName")} onBlur={handleBlur("firstName")}
                     autoComplete="given-name" disabled={isLoading}
-                    error={touched.firstName ? errors.firstName : undefined} />
+                    error={touched.firstName ? errors.firstName : undefined}/>
                   <Field id="lastName" label="Last name"
                     value={form.lastName} onChange={handleChange("lastName")} onBlur={handleBlur("lastName")}
                     autoComplete="family-name" disabled={isLoading}
-                    error={touched.lastName ? errors.lastName : undefined} />
+                    error={touched.lastName ? errors.lastName : undefined}/>
                 </div>
 
                 {/* Email */}
-                <div style={{ marginTop:10 }}>
+                <div style={{ marginTop:12 }}>
                   <Field id="email" label="Work email" type="email"
                     value={form.email} onChange={handleChange("email")} onBlur={handleBlur("email")}
                     autoComplete="email" disabled={isLoading}
-                    error={touched.email ? errors.email : undefined} />
+                    error={touched.email ? errors.email : undefined}/>
                 </div>
 
-                {/* Submit button */}
-                <SubmitButton isLoading={isLoading} isDone={isDone} status={status} />
+                {/* Submit */}
+                <SubmitButton isLoading={isLoading} isDone={isDone} status={status}/>
               </div>
 
               {/* Trust line */}
-              <div style={{
+              <div className="trust-line" style={{
                 display:"flex", alignItems:"center", justifyContent:"center",
-                gap:10, marginTop:12,
+                gap:12, marginTop:14, flexWrap:"wrap",
               }}>
                 {[
-                  { icon:<LockIcon />, text:"Encrypted" },
+                  { icon:<LockIcon/>, text:"Encrypted" },
                   null,
                   { icon:null, text:"No spam" },
                   null,
                   { icon:null, text:"Unsubscribe anytime" },
-                ].map((item, i) =>
+                ].map((item,i) =>
                   item === null
-                    ? <div key={i} style={{ width:1, height:10, background:"var(--border)" }} />
+                    ? <div key={i} style={{ width:1, height:11, background:"var(--border)" }}/>
                     : <span key={i} style={{
                         display:"flex", alignItems:"center", gap:5,
-                        fontSize:11, color:"var(--t3)", fontWeight:400,
+                        fontSize:11.5, color:"var(--t3)", fontWeight:400,
                       }}>
                         {item.icon}{item.text}
                       </span>
@@ -1134,28 +1147,26 @@ export default function WaitlistPage() {
           </div>
         </main>
 
-        {/* ════════════════════════════════════════════════════════
-            FOOTER — full viewport width, items at extremes
-        ════════════════════════════════════════════════════════ */}
-        <footer style={{
+        {/* ══════════════════════════════════════════════════════
+            FOOTER
+        ══════════════════════════════════════════════════════ */}
+        <footer className="page-pad" style={{
           position:"relative", zIndex:10,
           width:"100%",
-          padding:"14px 40px 20px",
-          animation:"rise .55s ease .28s both",
+          padding:"14px 48px 22px",
+          animation:"rise .5s ease .28s both",
         }}>
           <div style={{
-            borderTop:"1px solid var(--border)",
+            borderTop:"1px solid rgba(255,255,255,0.07)",
             paddingTop:14,
-            display:"flex",
-            alignItems:"center",
-            justifyContent:"space-between",
+            display:"flex", alignItems:"center", justifyContent:"space-between",
           }}>
-            <span style={{ fontSize:11, color:"var(--t3)" }}>
+            <span style={{ fontSize:11.5, color:"var(--t3)" }}>
               © {new Date().getFullYear()} Crane Core Group
             </span>
-            <span style={{
-              fontFamily:"var(--mono)", fontSize:10,
-              color:"var(--t3)", letterSpacing:"0.08em",
+            <span className="footer-right" style={{
+              fontFamily:"var(--mono)",
+              fontSize:10.5, color:"var(--t3)", letterSpacing:"0.08em",
             }}>
               Designing the future of infrastructure
             </span>
@@ -1167,59 +1178,60 @@ export default function WaitlistPage() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Submit button — isolated so hover handlers are clean
+   Submit button
 ───────────────────────────────────────────────────────────────────────────── */
 
 function SubmitButton({ isLoading, isDone, status }: {
   isLoading: boolean; isDone: boolean; status: string;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
 
   const bg = isDone
-    ? "linear-gradient(135deg,rgba(52,201,123,0.13),rgba(52,201,123,0.06))"
+    ? "linear-gradient(135deg,rgba(52,201,123,0.14),rgba(52,201,123,0.07))"
     : hovered
-    ? "linear-gradient(135deg,#6ec6ff 0%,#4fa8f0 100%)"
-    : "linear-gradient(135deg,#5aaeff 0%,#3d8ee8 100%)";
+    ? "linear-gradient(135deg,#72ccff 0%,#52aaee 100%)"
+    : "linear-gradient(135deg,#5aaeff 0%,#3d8de8 100%)";
 
-  const shadow = isDone
-    ? "none"
-    : hovered
-    ? "0 6px 32px -6px rgba(90,174,255,0.55)"
-    : "0 4px 22px -6px rgba(90,174,255,0.35)";
+  const shadow = isDone ? "none"
+    : hovered ? "0 8px 36px -6px rgba(90,174,255,0.6)"
+    : "0 4px 24px -6px rgba(90,174,255,0.38)";
 
   return (
     <button
       type="submit"
       disabled={isLoading}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setPressed(false); }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
       style={{
-        marginTop:16, width:"100%", height:46,
+        marginTop:18, width:"100%", height:50,
         borderRadius:"var(--r-md)",
-        border: isDone ? "1px solid rgba(52,201,123,0.28)" : "1px solid rgba(140,200,255,0.25)",
+        border: isDone ? "1px solid rgba(52,201,123,0.3)" : "1px solid rgba(150,210,255,0.22)",
         cursor: isLoading ? "not-allowed" : "pointer",
         background: bg,
         color: isDone ? "var(--green)" : "#04070f",
-        fontSize:13.5, fontWeight:600,
+        fontSize:14, fontWeight:600,
         fontFamily:"var(--font)",
         letterSpacing:"-0.01em",
-        display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+        display:"flex", alignItems:"center", justifyContent:"center", gap:9,
         transition:"background .2s ease, box-shadow .2s ease, transform .1s ease",
-        opacity: isLoading ? .72 : 1,
+        opacity: isLoading ? .7 : 1,
         boxShadow: shadow,
-        transform: hovered && !isLoading && !isDone ? "translateY(-1px)" : "none",
+        transform: pressed ? "scale(0.985)" : hovered && !isLoading && !isDone ? "translateY(-1px)" : "none",
         position:"relative", overflow:"hidden",
       }}
     >
       {isLoading ? (
-        <><SpinnerIcon /><span>Processing…</span></>
+        <><SpinnerIcon/><span>Processing…</span></>
       ) : isDone ? (
-        <span style={{ display:"flex", alignItems:"center", gap:7, animation:"pop .4s ease both" }}>
-          <CheckIcon size={15} />
+        <span style={{ display:"flex", alignItems:"center", gap:8, animation:"pop .4s ease both" }}>
+          <CheckIcon size={16}/>
           {status === "duplicate" ? "Already registered" : "Request received"}
         </span>
       ) : (
-        <><span>Request early access</span><ArrowIcon /></>
+        <><span>Request early access</span><ArrowIcon/></>
       )}
     </button>
   );
@@ -1242,23 +1254,23 @@ function Field({ id, label, value, onChange, onBlur, type="text", autoComplete, 
   const isValid  = isFilled && !error;
   const isError  = !!error;
 
-  const borderColor = isError ? "rgba(240,96,96,0.45)"
-    : isValid   ? "rgba(52,201,123,0.3)"
-    : focused   ? "rgba(90,174,255,0.4)"
-    : "var(--border)";
+  const borderColor = isError  ? "rgba(240,104,104,0.5)"
+    : isValid   ? "rgba(52,201,123,0.35)"
+    : focused   ? "rgba(90,174,255,0.45)"
+    : "rgba(255,255,255,0.09)";
 
-  const ring = isError ? "0 0 0 3px rgba(240,96,96,0.10)"
-    : isValid   ? "0 0 0 3px rgba(52,201,123,0.09)"
-    : focused   ? "0 0 0 3px rgba(90,174,255,0.10)"
+  const ring = isError  ? "0 0 0 3px rgba(240,104,104,0.11)"
+    : isValid   ? "0 0 0 3px rgba(52,201,123,0.10)"
+    : focused   ? "0 0 0 3px rgba(90,174,255,0.11)"
     : "none";
 
   return (
     <div style={{ animation: isError ? "shake .32s ease" : undefined }}>
       <div style={{
-        position:"relative", height:48,
+        position:"relative", height:52,
         borderRadius:"var(--r-md)",
         border:`1px solid ${borderColor}`,
-        background: focused ? "var(--surface-hover)" : "var(--surface)",
+        background: focused ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)",
         transition:"border-color .17s ease, box-shadow .17s ease, background .17s ease",
         boxShadow: ring,
         display:"flex", alignItems:"center",
@@ -1273,32 +1285,32 @@ function Field({ id, label, value, onChange, onBlur, type="text", autoComplete, 
           aria-invalid={isError}
           aria-describedby={isError ? `${id}-err` : undefined}
           className="fi"
-          style={{ paddingRight: (isValid || isError) ? 38 : 14 }}
+          style={{ paddingRight: (isValid || isError) ? 40 : 14 }}
         />
         <label htmlFor={id} className="fl">{label}</label>
 
         {isValid && (
           <span style={{
-            position:"absolute", right:12, pointerEvents:"none",
+            position:"absolute", right:13, pointerEvents:"none",
             color:"var(--green)", display:"flex", alignItems:"center",
             animation:"pop .25s ease both",
           }}>
-            <CheckIcon size={14} />
+            <CheckIcon size={15}/>
           </span>
         )}
         {isError && (
           <span style={{
-            position:"absolute", right:12, pointerEvents:"none",
+            position:"absolute", right:13, pointerEvents:"none",
             color:"var(--red)", display:"flex", alignItems:"center",
           }}>
-            <XIcon />
+            <XIcon/>
           </span>
         )}
       </div>
       {isError && (
         <p id={`${id}-err`} role="alert" style={{
-          margin:"5px 0 0 2px", fontSize:11,
-          color:"rgba(240,96,96,0.75)",
+          margin:"5px 0 0 2px", fontSize:11.5,
+          color:"rgba(240,104,104,0.8)",
           animation:"err-in .2s ease both", lineHeight:1.4,
         }}>
           {error}
@@ -1309,75 +1321,139 @@ function Field({ id, label, value, onChange, onBlur, type="text", autoComplete, 
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Toast
+   Toast — large, centred, impossible to miss
 ───────────────────────────────────────────────────────────────────────────── */
 
 function Toast({ item, onClose }: { item: ToastItem; onClose: () => void }) {
   const cfg = {
-    success: { bg:"rgba(8,24,16,0.96)", border:"rgba(52,201,123,0.18)", icon:<CheckIcon size={14} />, ic:"var(--green)" },
-    info:    { bg:"rgba(6,14,28,0.96)", border:"rgba(90,174,255,0.18)", icon:<InfoIcon />,           ic:"var(--blue)"  },
-    error:   { bg:"rgba(24,6,6,0.96)",  border:"rgba(240,96,96,0.18)",  icon:<WarnIcon />,           ic:"var(--red)"   },
+    success: {
+      bg:"linear-gradient(135deg,rgba(10,28,20,0.98),rgba(8,22,16,0.98))",
+      border:"rgba(52,201,123,0.25)",
+      bar:"var(--green)",
+      icon:<CheckIcon size={18}/>, ic:"var(--green)",
+    },
+    info: {
+      bg:"linear-gradient(135deg,rgba(6,16,32,0.98),rgba(5,12,26,0.98))",
+      border:"rgba(90,174,255,0.25)",
+      bar:"var(--blue)",
+      icon:<InfoIcon/>, ic:"var(--blue)",
+    },
+    error: {
+      bg:"linear-gradient(135deg,rgba(28,8,8,0.98),rgba(22,6,6,0.98))",
+      border:"rgba(240,104,104,0.25)",
+      bar:"var(--red)",
+      icon:<WarnIcon/>, ic:"var(--red)",
+    },
   }[item.variant];
 
   return (
-    <div role="status" style={{
-      pointerEvents:"all", width:"100%",
-      display:"flex", alignItems:"flex-start", gap:10,
-      padding:"11px 13px",
-      borderRadius:"var(--r-md)",
+    <div role="alert" style={{
+      pointerEvents:"all",
+      width:"100%",
+      display:"flex", alignItems:"flex-start", gap:14,
+      padding:"16px 18px",
+      borderRadius:"var(--r-lg)",
       border:`1px solid ${cfg.border}`,
-      background:cfg.bg,
-      backdropFilter:"blur(24px)",
-      boxShadow:"0 16px 48px -10px rgba(0,0,0,0.82)",
-      animation:"toast-in .3s cubic-bezier(.22,1,.36,1) both",
+      background: cfg.bg,
+      backdropFilter:"blur(28px)",
+      boxShadow:`0 24px 64px -12px rgba(0,0,0,0.88), 0 0 0 1px rgba(255,255,255,0.04)`,
+      animation:"toast-in .35s cubic-bezier(.22,1,.36,1) both",
+      position:"relative",
+      overflow:"hidden",
     }}>
-      <span style={{ marginTop:1, flexShrink:0, color:cfg.ic, display:"flex", alignItems:"center" }}>{cfg.icon}</span>
+      {/* Colour bar on left edge */}
+      <div style={{
+        position:"absolute", left:0, top:0, bottom:0, width:3,
+        background:cfg.bar, borderRadius:"4px 0 0 4px", opacity:.8,
+      }}/>
+
+      {/* Icon */}
+      <span style={{
+        marginTop:1, flexShrink:0,
+        color:cfg.ic, display:"flex", alignItems:"center",
+        width:32, height:32, borderRadius:8,
+        background:`${cfg.ic}18`,
+        justifyContent:"center",
+      }}>
+        {cfg.icon}
+      </span>
+
+      {/* Text */}
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"var(--t1)", letterSpacing:"-0.01em", lineHeight:1.3 }}>{item.title}</p>
-        {item.body && <p style={{ margin:"3px 0 0", fontSize:11.5, color:"var(--t2)", lineHeight:1.5 }}>{item.body}</p>}
+        <p style={{
+          margin:0, fontSize:14.5, fontWeight:600,
+          color:"var(--t1)", letterSpacing:"-0.015em", lineHeight:1.3,
+        }}>
+          {item.title}
+        </p>
+        {item.body && (
+          <p style={{
+            margin:"5px 0 0", fontSize:13,
+            color:"var(--t2)", lineHeight:1.55,
+          }}>
+            {item.body}
+          </p>
+        )}
       </div>
+
+      {/* Close */}
       <button onClick={onClose} aria-label="Dismiss"
         style={{
-          flexShrink:0, marginTop:-2, marginRight:-3,
-          width:24, height:24, borderRadius:6, border:"none",
-          background:"transparent", cursor:"pointer",
+          flexShrink:0, width:28, height:28,
+          borderRadius:7, border:"none",
+          background:"rgba(255,255,255,0.06)",
+          cursor:"pointer",
           display:"flex", alignItems:"center", justifyContent:"center",
           color:"var(--t3)", transition:"background .14s ease, color .14s ease",
+          marginTop:-2,
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.06)"; (e.currentTarget as HTMLButtonElement).style.color="var(--t1)"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="transparent"; (e.currentTarget as HTMLButtonElement).style.color="var(--t3)"; }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.12)";
+          (e.currentTarget as HTMLButtonElement).style.color="var(--t1)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.06)";
+          (e.currentTarget as HTMLButtonElement).style.color="var(--t3)";
+        }}
       >
-        <CloseIcon />
+        <CloseIcon/>
       </button>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Logo
+   Logo mark
+   ─────────────────────────────────────────────────────────────────────────────
+   TO USE YOUR OWN LOGO IMAGE:
+   Replace this entire <CraneLogo /> component usage in the nav with:
+     <img src="/logo.png" alt="Crane Core Group"
+       width={48} height={48} style={{ borderRadius:10, objectFit:"contain" }} />
+   Your logo file goes in the /public folder of your project.
 ───────────────────────────────────────────────────────────────────────────── */
 
 function CraneLogo() {
   return (
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-label="Crane Core Group" style={{ flexShrink:0 }}>
-      <rect x=".5" y=".5" width="33" height="33" rx="7.5" stroke="rgba(255,255,255,0.10)" />
-      <rect x="1" y="1" width="32" height="32" rx="7" fill="rgba(255,255,255,0.022)" />
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none"
+      aria-label="Crane Core Group logo" style={{ flexShrink:0 }}>
+      <rect x=".5" y=".5" width="43" height="43" rx="9.5" stroke="rgba(255,255,255,0.1)"/>
+      <rect x="1"  y="1"  width="42" height="42" rx="9"   fill="rgba(255,255,255,0.025)"/>
       {/* Mast */}
-      <line x1="11" y1="27" x2="11" y2="10" stroke="rgba(237,241,255,0.88)" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="14" y1="34" x2="14" y2="12" stroke="rgba(237,242,255,0.88)" strokeWidth="2" strokeLinecap="round"/>
       {/* Jib */}
-      <line x1="11" y1="10" x2="26" y2="10" stroke="rgba(237,241,255,0.88)" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="14" y1="12" x2="33" y2="12" stroke="rgba(237,242,255,0.88)" strokeWidth="2" strokeLinecap="round"/>
       {/* Counter-jib */}
-      <line x1="11" y1="10" x2="7"  y2="10" stroke="rgba(237,241,255,0.38)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="14" y1="12" x2="9"  y2="12" stroke="rgba(237,242,255,0.38)" strokeWidth="1.5" strokeLinecap="round"/>
       {/* Pendant */}
-      <line x1="26" y1="10" x2="26" y2="15" stroke="rgba(237,241,255,0.88)" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="33" y1="12" x2="33" y2="19" stroke="rgba(237,242,255,0.88)" strokeWidth="2" strokeLinecap="round"/>
       {/* Hook */}
-      <path d="M26 15 Q26 18.5 23 18.5" stroke="rgba(237,241,255,0.88)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <path d="M33 19 Q33 23.5 29.5 23.5" stroke="rgba(237,242,255,0.88)" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
       {/* Base */}
-      <line x1="7.5" y1="27" x2="14.5" y2="27" stroke="rgba(237,241,255,0.88)" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="9.5" y1="34" x2="18.5" y2="34" stroke="rgba(237,242,255,0.88)" strokeWidth="2" strokeLinecap="round"/>
       {/* Hoist cable */}
-      <line x1="19.5" y1="10" x2="19.5" y2="23" stroke="rgba(237,241,255,0.25)" strokeWidth=".9" strokeDasharray="2.5 2" />
+      <line x1="25" y1="12" x2="25" y2="29" stroke="rgba(237,242,255,0.22)" strokeWidth="1" strokeDasharray="3 2.5"/>
       {/* Blue trolley dot */}
-      <circle cx="26" cy="10" r="1.6" fill="rgba(90,174,255,0.9)" />
+      <circle cx="33" cy="12" r="2.2" fill="rgba(90,174,255,0.95)"/>
     </svg>
   );
 }
@@ -1388,16 +1464,16 @@ function CraneLogo() {
 
 function SpinnerIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       style={{ animation:"spin .75s linear infinite", flexShrink:0 }} aria-hidden>
-      <circle cx="12" cy="12" r="10" stroke="rgba(4,7,15,0.2)" strokeWidth="2.5"/>
+      <circle cx="12" cy="12" r="10" stroke="rgba(4,7,15,0.18)" strokeWidth="2.5"/>
       <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
     </svg>
   );
 }
 function ArrowIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
     </svg>
@@ -1413,7 +1489,7 @@ function CheckIcon({ size=16 }: { size?: number }) {
 }
 function XIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
     </svg>
@@ -1421,7 +1497,7 @@ function XIcon() {
 }
 function LockIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="4" y="11" width="16" height="10" rx="2"/>
       <path d="M8 11V7a4 4 0 1 1 8 0v4"/>
@@ -1430,7 +1506,7 @@ function LockIcon() {
 }
 function CloseIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
     </svg>
@@ -1438,7 +1514,7 @@ function CloseIcon() {
 }
 function InfoIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
     </svg>
@@ -1446,7 +1522,7 @@ function InfoIcon() {
 }
 function WarnIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
       <path d="M12 9v4"/><path d="M12 17h.01"/>
